@@ -7,7 +7,7 @@
 pyrogram
 tgcrypto
 flask
-pymango
+pymongo
 
 # ------------------------- #
 # Don't Remove Credit 
