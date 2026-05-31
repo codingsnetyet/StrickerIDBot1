@@ -21,24 +21,12 @@ from pymongo import MongoClient
 from pyrogram.enums import ChatMemberStatus
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
-
 # ================= MONGO =================
 
 MONGO_URL = os.environ.get("MONGO_URL")
 mongo = MongoClient(MONGO_URL)
 db = mongo["StickerBot"]
 fsub_col = db["force_sub"]
-
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 # ================= BOT =================
 
@@ -51,25 +39,12 @@ bot = Client(
 
 broadcast_mode = set()
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
-
 # ================= FORCE SUB FUNCTIONS =================
 
 def get_fsubs():
     data = fsub_col.find_one({"_id": "fsubs"})
-    if not data:
-        return []
-    return data.get("channels", [])
+    return data.get("channels", []) if data else []
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 def add_fsub(channel):
     fsub_col.update_one(
@@ -78,11 +53,6 @@ def add_fsub(channel):
         upsert=True
     )
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 def remove_fsub(channel):
     fsub_col.update_one(
@@ -90,11 +60,6 @@ def remove_fsub(channel):
         {"$pull": {"channels": channel}}
     )
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 async def check_force_sub(client, user_id):
 
@@ -122,17 +87,13 @@ async def check_force_sub(client, user_id):
 
     return True
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
-# ================= FORCE SUB CHECKER (IMPORTANT FIX) =================
+# ================= FORCE SUB CHECKER =================
 
-@bot.on_message(filters.private & ~filters.command([
-    "start", "stickerid", "stats", "broadcast"
-]))
+@bot.on_message(filters.private & ~filters.command(
+    ["start", "stickerid", "stats", "broadcast",
+     "fsub", "nofsub", "listfsub"]
+))
 async def force_sub_checker(client, message):
 
     if not message.from_user:
@@ -148,12 +109,10 @@ async def force_sub_checker(client, message):
         return
 
     btn = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "📢 Join Channel",
-                url=f"https://t.me/{channels[0].replace('@','')}"
-            )
-        ]
+        [InlineKeyboardButton(
+            "📢 Join Channel",
+            url=f"https://t.me/{channels[0].replace('@','')}"
+        )]
     ])
 
     await message.reply_text(
@@ -161,43 +120,78 @@ async def force_sub_checker(client, message):
         reply_markup=btn
     )
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
-# ================= COMMANDS =================
+# ================= FORCE SUB COMMANDS =================
+
+@bot.on_message(filters.command("fsub"))
+def set_fsub(_, msg):
+    if msg.from_user.id != OWNER_ID:
+        return
+
+    if len(msg.command) < 2:
+        return msg.reply_text("Use: /fsub @channel")
+
+    channel = msg.command[1]
+    if not channel.startswith("@"):
+        channel = "@" + channel
+
+    add_fsub(channel)
+    msg.reply_text(f"✅ Added FSub: {channel}")
+
+
+@bot.on_message(filters.command("nofsub"))
+def del_fsub(_, msg):
+    if msg.from_user.id != OWNER_ID:
+        return
+
+    if len(msg.command) < 2:
+        return msg.reply_text("Use: /nofsub @channel")
+
+    channel = msg.command[1]
+    if not channel.startswith("@"):
+        channel = "@" + channel
+
+    remove_fsub(channel)
+    msg.reply_text(f"❌ Removed FSub: {channel}")
+
+
+@bot.on_message(filters.command("listfsub"))
+def list_fsub(_, msg):
+    if msg.from_user.id != OWNER_ID:
+        return
+
+    channels = get_fsubs()
+
+    if not channels:
+        return msg.reply_text("No Force Sub channels set.")
+
+    text = "📢 Force Sub Channels:\n\n"
+    for ch in channels:
+        text += f"• {ch}\n"
+
+    msg.reply_text(text)
+
+
+# ================= START =================
 
 @bot.on_message(filters.command("start"))
 def start(_, msg):
     start_handler(bot, msg)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
+
+# ================= STICKER =================
 
 @bot.on_message(filters.command("stickerid"))
 def ask(_, msg):
     ask_sticker(bot, msg)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 @bot.on_message(filters.sticker)
 def sticker(_, msg):
     handle_sticker(bot, msg)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
+
+# ================= STATS =================
 
 @bot.on_message(filters.command("stats"))
 def stats(_, msg):
@@ -228,11 +222,8 @@ def stats(_, msg):
 🧬 Version: {VERSION}
 """)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
+
+# ================= BROADCAST =================
 
 @bot.on_message(filters.command("broadcast"))
 def broadcast(_, msg):
@@ -243,13 +234,8 @@ def broadcast(_, msg):
     broadcast_mode.add(msg.from_user.id)
     msg.reply_text("Send message to broadcast")
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
-@bot.on_message(filters.private & filters.text & filters.incoming)
+@bot.on_message(filters.private & filters.text)
 def send_broadcast(_, msg):
 
     if msg.from_user.id not in broadcast_mode:
@@ -257,12 +243,6 @@ def send_broadcast(_, msg):
 
     if msg.text.startswith("/"):
         return
-
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
     users = get_all_users()
 
@@ -279,23 +259,17 @@ def send_broadcast(_, msg):
 
     broadcast_mode.remove(msg.from_user.id)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
+
+# ================= CALLBACK =================
 
 @bot.on_callback_query()
 def cb(_, q):
     callback_handler(bot, q)
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
-@bot.on_message(filters.private & filters.incoming)
+# ================= SAVE USER (FIXED - prevents spam + correct stats) =================
+
+@bot.on_message(filters.private)
 def save_user(_, msg):
 
     if not msg.from_user:
@@ -309,11 +283,6 @@ def save_user(_, msg):
     except:
         pass
 
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
 
 # ================= START BOT =================
 
