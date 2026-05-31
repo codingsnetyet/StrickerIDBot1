@@ -45,7 +45,6 @@ def get_fsubs():
     data = fsub_col.find_one({"_id": "fsubs"})
     return data.get("channels", []) if data else []
 
-
 def add_fsub(channel):
     fsub_col.update_one(
         {"_id": "fsubs"},
@@ -53,13 +52,11 @@ def add_fsub(channel):
         upsert=True
     )
 
-
 def remove_fsub(channel):
     fsub_col.update_one(
         {"_id": "fsubs"},
         {"$pull": {"channels": channel}}
     )
-
 
 async def check_force_sub(client, user_id):
 
@@ -73,7 +70,6 @@ async def check_force_sub(client, user_id):
     for channel in channels:
         try:
             member = await client.get_chat_member(channel, user_id)
-
             if member.status not in [
                 ChatMemberStatus.MEMBER,
                 ChatMemberStatus.ADMINISTRATOR,
@@ -86,12 +82,12 @@ async def check_force_sub(client, user_id):
     return True
 
 
-# ================= FORCE SUB CHECKER (FIXED ORDER) =================
+# ================= FORCE SUB CHECKER =================
 
-@bot.on_message(filters.private & ~filters.command(
-    ["start", "stickerid", "stats", "broadcast",
-     "fsub", "nofsub", "listfsub"]
-))
+@bot.on_message(filters.private & ~filters.command([
+    "start", "stickerid", "stats", "broadcast",
+    "fsub", "nofsub", "listfsub"
+]))
 async def force_sub_checker(client, message):
 
     if not message.from_user:
@@ -122,30 +118,30 @@ async def force_sub_checker(client, message):
 # ================= COMMANDS =================
 
 @bot.on_message(filters.command("start"))
-def start(_, msg):
-    add_user(msg.from_user.id)  # FIX: ensure stats work
-    start_handler(bot, msg)
+async def start(_, msg):
+    add_user(msg.from_user.id)
+    await start_handler(bot, msg)
 
 
 @bot.on_message(filters.command("stickerid"))
-def ask(_, msg):
-    add_user(msg.from_user.id)  # FIX
-    ask_sticker(bot, msg)
+async def ask(_, msg):
+    add_user(msg.from_user.id)
+    await ask_sticker(bot, msg)
 
 
 @bot.on_message(filters.sticker)
-def sticker(_, msg):
-    add_user(msg.from_user.id)  # FIX
-    handle_sticker(bot, msg)
+async def sticker(_, msg):
+    add_user(msg.from_user.id)
+    await handle_sticker(bot, msg)
 
 
 # ================= STATS =================
 
 @bot.on_message(filters.command("stats"))
-def stats(_, msg):
+async def stats(_, msg):
 
     if msg.from_user.id != OWNER_ID:
-        return msg.reply_text("Yᴏᴜ Aʀᴇ Nᴏᴛ Mʏ Mᴀsᴛᴇʀ.")
+        return await msg.reply_text("Yᴏᴜ Aʀᴇ Nᴏᴛ Mʏ Mᴀsᴛᴇʀ.")
 
     start_ping = time.time()
     users, stickers = get_stats()
@@ -160,7 +156,7 @@ def stats(_, msg):
 
     uptime = f"{days}d {hours}h {minutes}m {seconds}s"
 
-    msg.reply_text(f"""
+    await msg.reply_text(f"""
 📊 𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝘀
 
 👥 Users: {users}
@@ -171,20 +167,22 @@ def stats(_, msg):
 """)
 
 
-# ================= BROADCAST (FIXED) =================
+# ================= BROADCAST =================
 
 @bot.on_message(filters.command("broadcast"))
-def broadcast(_, msg):
+async def broadcast(_, msg):
 
     if msg.from_user.id != OWNER_ID:
-        return msg.reply_text("Not allowed")
+        return await msg.reply_text("Not allowed")
 
     broadcast_mode.add(msg.from_user.id)
-    msg.reply_text("Send message to broadcast")
+    await msg.reply_text("Send message to broadcast")
 
 
-@bot.on_message(filters.private & filters.text & ~filters.command(["start","stats","stickerid","fsub","nofsub","listfsub"]))
-def send_broadcast(_, msg):
+@bot.on_message(filters.private & filters.text & ~filters.command([
+    "start","stats","stickerid","fsub","nofsub","listfsub","broadcast"
+]))
+async def send_broadcast(_, msg):
 
     if msg.from_user.id not in broadcast_mode:
         return
@@ -195,12 +193,12 @@ def send_broadcast(_, msg):
 
     for u in users:
         try:
-            bot.send_message(u[0], msg.text)
+            await bot.send_message(u[0], msg.text)
             ok += 1
         except:
             fail += 1
 
-    msg.reply_text(f"Done\nSent: {ok}\nFailed: {fail}")
+    await msg.reply_text(f"Done\nSent: {ok}\nFailed: {fail}")
 
     broadcast_mode.remove(msg.from_user.id)
 
@@ -208,14 +206,16 @@ def send_broadcast(_, msg):
 # ================= CALLBACK =================
 
 @bot.on_callback_query()
-def cb(_, q):
-    callback_handler(bot, q)
+async def cb(_, q):
+    await callback_handler(bot, q)
 
 
-# ================= SAVE USER (SAFE NOW) =================
+# ================= SAVE USER =================
 
-@bot.on_message(filters.private & ~filters.command(["start","stats","stickerid","fsub","nofsub","listfsub","broadcast"]))
-def save_user(_, msg):
+@bot.on_message(filters.private & ~filters.command([
+    "start","stats","stickerid","fsub","nofsub","listfsub","broadcast"
+]))
+async def save_user(_, msg):
 
     if not msg.from_user:
         return
@@ -232,9 +232,3 @@ if __name__ == "__main__":
     keep_alive()
     print("Bot Running...")
     bot.run()
-
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
