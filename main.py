@@ -39,7 +39,7 @@ bot = Client(
 
 broadcast_mode = set()
 
-# ================= FORCE SUB FUNCTIONS =================
+# ================= FORCE SUB =================
 
 def get_fsubs():
     data = fsub_col.find_one({"_id": "fsubs"})
@@ -67,7 +67,6 @@ async def check_force_sub(client, user_id):
         return True
 
     channels = get_fsubs()
-
     if not channels:
         return True
 
@@ -81,14 +80,13 @@ async def check_force_sub(client, user_id):
                 ChatMemberStatus.OWNER
             ]:
                 return False
-
         except:
             return False
 
     return True
 
 
-# ================= FORCE SUB CHECKER =================
+# ================= FORCE SUB CHECKER (FIXED ORDER) =================
 
 @bot.on_message(filters.private & ~filters.command(
     ["start", "stickerid", "stats", "broadcast",
@@ -121,73 +119,23 @@ async def force_sub_checker(client, message):
     )
 
 
-# ================= FORCE SUB COMMANDS =================
-
-@bot.on_message(filters.command("fsub"))
-def set_fsub(_, msg):
-    if msg.from_user.id != OWNER_ID:
-        return
-
-    if len(msg.command) < 2:
-        return msg.reply_text("Use: /fsub @channel")
-
-    channel = msg.command[1]
-    if not channel.startswith("@"):
-        channel = "@" + channel
-
-    add_fsub(channel)
-    msg.reply_text(f"✅ Added FSub: {channel}")
-
-
-@bot.on_message(filters.command("nofsub"))
-def del_fsub(_, msg):
-    if msg.from_user.id != OWNER_ID:
-        return
-
-    if len(msg.command) < 2:
-        return msg.reply_text("Use: /nofsub @channel")
-
-    channel = msg.command[1]
-    if not channel.startswith("@"):
-        channel = "@" + channel
-
-    remove_fsub(channel)
-    msg.reply_text(f"❌ Removed FSub: {channel}")
-
-
-@bot.on_message(filters.command("listfsub"))
-def list_fsub(_, msg):
-    if msg.from_user.id != OWNER_ID:
-        return
-
-    channels = get_fsubs()
-
-    if not channels:
-        return msg.reply_text("No Force Sub channels set.")
-
-    text = "📢 Force Sub Channels:\n\n"
-    for ch in channels:
-        text += f"• {ch}\n"
-
-    msg.reply_text(text)
-
-
-# ================= START =================
+# ================= COMMANDS =================
 
 @bot.on_message(filters.command("start"))
 def start(_, msg):
+    add_user(msg.from_user.id)  # FIX: ensure stats work
     start_handler(bot, msg)
 
 
-# ================= STICKER =================
-
 @bot.on_message(filters.command("stickerid"))
 def ask(_, msg):
+    add_user(msg.from_user.id)  # FIX
     ask_sticker(bot, msg)
 
 
 @bot.on_message(filters.sticker)
 def sticker(_, msg):
+    add_user(msg.from_user.id)  # FIX
     handle_sticker(bot, msg)
 
 
@@ -223,7 +171,7 @@ def stats(_, msg):
 """)
 
 
-# ================= BROADCAST =================
+# ================= BROADCAST (FIXED) =================
 
 @bot.on_message(filters.command("broadcast"))
 def broadcast(_, msg):
@@ -235,13 +183,10 @@ def broadcast(_, msg):
     msg.reply_text("Send message to broadcast")
 
 
-@bot.on_message(filters.private & filters.text)
+@bot.on_message(filters.private & filters.text & ~filters.command(["start","stats","stickerid","fsub","nofsub","listfsub"]))
 def send_broadcast(_, msg):
 
     if msg.from_user.id not in broadcast_mode:
-        return
-
-    if msg.text.startswith("/"):
         return
 
     users = get_all_users()
@@ -267,15 +212,12 @@ def cb(_, q):
     callback_handler(bot, q)
 
 
-# ================= SAVE USER (FIXED - prevents spam + correct stats) =================
+# ================= SAVE USER (SAFE NOW) =================
 
-@bot.on_message(filters.private)
+@bot.on_message(filters.private & ~filters.command(["start","stats","stickerid","fsub","nofsub","listfsub","broadcast"]))
 def save_user(_, msg):
 
     if not msg.from_user:
-        return
-
-    if msg.text and msg.text.startswith("/"):
         return
 
     try:
