@@ -1,4 +1,3 @@
-
 # ------------------------- #
 # Don't Remove Credit 
 # Ask Doubt @AU_Bot_Discussion 
@@ -6,10 +5,15 @@
 # ------------------------- #
 
 import sqlite3
+import threading
 from config import DB_NAME
 
 conn = sqlite3.connect(DB_NAME, check_same_thread=False)
 cur = conn.cursor()
+
+# ------------------------- #
+# TABLES
+# ------------------------- #
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS users (
@@ -29,60 +33,56 @@ CREATE TABLE IF NOT EXISTS stickers (
 conn.commit()
 
 # ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
+# THREAD SAFE LOCK 
 # ------------------------- #
-
-def add_user(uid):
-    cur.execute("INSERT OR IGNORE INTO users VALUES (?)", (uid,))
-    conn.commit()
-
-def add_sticker(uid, file_id, unique_id):
-    cur.execute(
-        "INSERT INTO stickers (user_id, file_id, unique_id) VALUES (?, ?, ?)",
-        (uid, file_id, unique_id)
-    )
-    conn.commit()
-
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
-
-def get_stats():
-    cur.execute("SELECT COUNT(*) FROM users")
-    users = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM stickers")
-    stickers = cur.fetchone()[0]
-
-    return users, stickers
-
-# ------------------------- #
-# Don't Remove Credit 
-# Ask Doubt @AU_Bot_Discussion 
-# Owner @Mr_Mohammed_29 
-# ------------------------- #
-
-def get_all_users():
-    cur.execute("SELECT user_id FROM users")
-    return cur.fetchall()
-
-# ===================== ADDED SAFETY FIX (ONLY ADDITION) =====================
-
-import threading
 
 db_lock = threading.Lock()
 
 def safe_execute(query, params=()):
-    """Thread-safe DB execution (prevents Render crashes)"""
+    """Thread-safe DB execution (prevents crashes on Render)"""
     with db_lock:
         cur.execute(query, params)
         conn.commit()
 
-# Optional improved wrappers (NOT replacing old code, only extra tools)
+# ------------------------- #
+# USER FUNCTIONS
+# ------------------------- #
+
+def add_user(uid):
+    safe_execute("INSERT OR IGNORE INTO users VALUES (?)", (uid,))
+
+def add_sticker(uid, file_id, unique_id):
+    safe_execute(
+        "INSERT INTO stickers (user_id, file_id, unique_id) VALUES (?, ?, ?)",
+        (uid, file_id, unique_id)
+    )
+
+# ------------------------- #
+# STATS
+# ------------------------- #
+
+def get_stats():
+    with db_lock:
+        cur.execute("SELECT COUNT(*) FROM users")
+        users = cur.fetchone()[0]
+
+        cur.execute("SELECT COUNT(*) FROM stickers")
+        stickers = cur.fetchone()[0]
+
+    return users, stickers
+
+# ------------------------- #
+# ALL USERS (FIXED FOR BROADCAST)
+# ------------------------- #
+
+def get_all_users():
+    with db_lock:
+        cur.execute("SELECT user_id FROM users")
+        return cur.fetchall()
+
+# ------------------------- #
+# SAFE EXTRA WRAPPERS (OPTIONAL)
+# ------------------------- #
 
 def add_user_safe(uid):
     safe_execute("INSERT OR IGNORE INTO users VALUES (?)", (uid,))
